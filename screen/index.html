@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second screen: Tricky Words</title>
+<meta name="description" content="Use any laptop, tablet or classroom board as a second screen for the Tricky Words app.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon.png">
+<link rel="preload" href="/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/screen/screen.css">
+</head>
+<body class="screen-page">
+
+<main id="join" class="join">
+  <a class="join-brand" href="/"><img src="/img/logo.jpg" alt="" width="64" height="64">Tricky Words</a>
+  <h1>Second screen</h1>
+  <p class="join-lead">In the app, tap "Second screen" and type the code shown there.</p>
+  <form id="join-form" autocomplete="off">
+    <label for="code" class="visually-hidden">Code from the app</label>
+    <input id="code" name="code" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="9" placeholder="ABC DEF" aria-describedby="code-problem">
+    <button class="button" type="submit">Show the words here</button>
+    <p id="code-problem" class="problem" role="alert" hidden>That code has 6 letters or numbers. Check it against the app.</p>
+  </form>
+  <p class="join-note">Nothing to install. This screen only shows the words; marking stays on the phone.</p>
+</main>
+
+<main id="stage" class="stage" hidden>
+  <div class="stage-bar">
+    <span id="stage-code" class="stage-code"></span>
+    <span class="stage-actions">
+      <button id="sound" type="button" class="chip" aria-pressed="true">Sound on</button>
+      <button id="full" type="button" class="chip">Full screen</button>
+      <button id="leave" type="button" class="chip">Leave</button>
+    </span>
+  </div>
+  <div id="view" class="view" aria-live="polite"></div>
+</main>
+
+<script type="module" src="/screen/screen.js"></script>
+</body>
+</html>

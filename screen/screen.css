@@ -1,0 +1,42 @@
+[hidden] { display: none !important; }
+.screen-page { min-height: 100vh; min-height: 100dvh; margin: 0; background: radial-gradient(120% 90% at 70% 10%, var(--sky) 0%, var(--blue) 55%, #0850C4 100%); color: #fff; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.join { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 22px; gap: 6px; }
+.join-brand { display: flex; align-items: center; gap: 14px; color: #fff; text-decoration: none; font-weight: 700; font-size: 26px; margin-bottom: 26px; }
+.join-brand img { border-radius: 16px; box-shadow: 0 4px 0 rgba(11, 42, 122, 0.45); }
+.join h1 { font-size: clamp(44px, 8vw, 84px); text-shadow: 0 4px 0 var(--navy), 0 10px 22px rgba(11, 42, 122, 0.35); }
+.join-lead { font-size: clamp(19px, 2.4vw, 24px); font-weight: 500; margin-top: 16px; max-width: 30ch; }
+#join-form { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+#code { font: 700 clamp(40px, 9vw, 76px)/1 "Fredoka", sans-serif; letter-spacing: 0.12em; text-align: center; text-transform: uppercase; width: min(8.2em, 92vw); padding: 16px 10px; color: var(--ink); background: var(--paper); border: 4px solid var(--navy); border-radius: 22px; box-shadow: 0 8px 0 var(--navy); }
+#code::placeholder { color: #B9C4DD; }
+#code:focus-visible { outline: 4px solid var(--pencil); outline-offset: 4px; }
+.problem { background: #fff; color: #A4161A; font-weight: 600; padding: 10px 16px; border-radius: 12px; margin: 0; }
+.join-note { margin-top: 28px; font-size: 16px; color: #DCEBFF; max-width: 40ch; }
+
+.stage { position: fixed; inset: 0; display: flex; flex-direction: column; }
+.stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; font-size: 16px; }
+.stage-code { font-weight: 600; letter-spacing: 0.08em; opacity: 0.85; }
+.stage-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chip { font: 600 15px "Fredoka", sans-serif; color: inherit; background: rgba(255, 255, 255, 0.16); border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.chip:hover { background: rgba(255, 255, 255, 0.28); }
+.chip:focus-visible { outline: 3px solid var(--pencil); outline-offset: 2px; }
+.stage:fullscreen .stage-bar, .stage.quiet .stage-bar { opacity: 0.35; }
+.stage:fullscreen .stage-bar:hover, .stage.quiet .stage-bar:hover, .stage-bar:focus-within { opacity: 1; }
+
+.view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2vh 4vw 8vh; gap: 2.5vh; min-height: 0; }
+.headline { font-size: clamp(34px, 7vw, 110px); font-weight: 700; line-height: 1.05; text-shadow: 0 0.05em 0 var(--navy); margin: 0; }
+.hint { font-size: clamp(20px, 3vw, 44px); font-weight: 500; color: #DCEBFF; margin: 0; }
+.pencil { font-size: clamp(70px, 16vh, 200px); line-height: 1; animation: wiggle 1.6s ease-in-out infinite; }
+@keyframes wiggle { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg) translateY(-6px); } }
+
+/* The word itself: on paper, as big as fits */
+.sheet { width: min(92vw, 1700px); background-color: var(--paper); color: var(--ink); border-radius: clamp(18px, 3vw, 44px); border: clamp(4px, 0.5vw, 8px) solid var(--navy); box-shadow: 0 clamp(8px, 1.2vw, 18px) 0 var(--navy); padding: clamp(18px, 5vh, 70px) clamp(16px, 3vw, 60px); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.sheet.ruled { background-image: repeating-linear-gradient(transparent 0 calc(var(--line, 90px) - 3px), var(--rule) calc(var(--line, 90px) - 3px) var(--line, 90px)); }
+.word { font-weight: 700; line-height: 1.05; white-space: nowrap; font-size: 200px; letter-spacing: 0.01em; }
+.tick { width: clamp(70px, 16vh, 190px); height: clamp(70px, 16vh, 190px); border-radius: 50%; background: var(--tick); border: clamp(4px, 0.6vw, 9px) solid #fff; display: grid; place-items: center; font-size: clamp(40px, 10vh, 120px); font-weight: 700; line-height: 1; animation: pop 0.4s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+.tick.gold { background: var(--pencil); color: var(--navy); }
+.badge { font-size: clamp(22px, 3.4vw, 54px); font-weight: 700; background: var(--pencil); color: var(--navy); padding: 0.2em 0.7em; border-radius: 999px; }
+@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) { .pencil, .tick { animation: none; } }
