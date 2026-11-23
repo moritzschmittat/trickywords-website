@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your school's spelling list: Tricky Words</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner"><img src="/img/logo.jpg" alt="" width="46" height="46"><a class="brand" href="/">Tricky Words</a><nav class="site-nav"><a href="/">Home</a><a href="/support.html">Help</a><a href="/privacy.html">Privacy</a></nav></div></header>
+<main class="doc">
+<h1>Your school's spelling list</h1>
+<p class="lead">Your child's teacher sets the weekly spelling words in Tricky Words, and they arrive on your phone.</p>
+<div class="card">
+<h2>Your code: <span id="code">see your teacher's note</span></h2>
+<p>In the Tricky Words app, open Words, choose "Add a school list" and type this code.</p>
+<p><strong>This is a preview.</strong> Adding a school list needs version 2.1 of the app, which is on its way. Until then you can type the words in under "Add my own".</p>
+</div>
+<p><a class="button" href="/">About Tricky Words</a></p>
+</main>
+<footer class="site-footer"><div class="inner">Tricky Words is made by Schmittat Ltd, registered in England and Wales, company number 9452378. <a href="/privacy.html">Privacy policy</a> · <a href="mailto:support@trickywords.uk">support@trickywords.uk</a></div></footer>
+<script>
+  // Show the code from the link. Only letters and digits are ever displayed.
+  var code = (new URLSearchParams(location.search).get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (code.length === 6) document.getElementById('code').textContent = code.slice(0, 3) + ' ' + code.slice(3);
+</script>
+</body>
+</html>
