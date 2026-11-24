@@ -26,7 +26,7 @@ function h(tag, props, ...children) {
     else if (value === true) el.setAttribute(key, '');
     else el.setAttribute(key, value);
   }
-  for (const child of children.flat()) {
+  for (const child of children.flat(Infinity)) {
     if (child === null || child === undefined || child === false) continue;
     el.append(child.nodeType ? child : document.createTextNode(String(child)));
   }
@@ -125,11 +125,37 @@ function realBackend() {
       ok(await sb.rpc('delete_my_account'));
       await sb.auth.signOut({ scope: 'local' });
     },
-    async lists() {
-      return ok(await sb.from('word_lists').select('id, name, code, created_at').order('created_at'));
+    async schools() {
+      const { data } = await sb.auth.getSession();
+      const me = data.session?.user?.id;
+      const rows = ok(await sb.from('schools').select('id, name, owner, created_at').order('created_at'));
+      return rows.map((s) => ({ id: s.id, name: s.name, created_at: s.created_at, mine: s.owner === me }));
     },
-    async createList(name) {
-      return ok(await sb.from('word_lists').insert({ name }).select('id, name, code, created_at').single());
+    async createSchool(name) {
+      return ok(await sb.from('schools').insert({ name }).select('id, name').single());
+    },
+    async renameSchool(id, name) {
+      ok(await sb.from('schools').update({ name }).eq('id', id));
+    },
+    async staff(schoolId) {
+      const members = ok(await sb.from('school_members').select('email, added_at').eq('school_id', schoolId).order('added_at'));
+      const owner = ok(await sb.rpc('school_owner_email', { p_school: schoolId }));
+      return { members: members.map((m) => m.email), owner };
+    },
+    async invite(schoolId, email) {
+      ok(await sb.from('school_members').insert({ school_id: schoolId, email }));
+    },
+    async removeMember(schoolId, email) {
+      ok(await sb.from('school_members').delete().eq('school_id', schoolId).eq('email', email));
+    },
+    async handOver(schoolId, email) {
+      ok(await sb.rpc('transfer_school', { p_school: schoolId, p_email: email }));
+    },
+    async lists(schoolId) {
+      return ok(await sb.from('word_lists').select('id, name, code, created_at').eq('school_id', schoolId).order('created_at'));
+    },
+    async createList(schoolId, name) {
+      return ok(await sb.from('word_lists').insert({ name, school_id: schoolId }).select('id, name, code, created_at').single());
     },
     async renameList(id, name) {
       ok(await sb.from('word_lists').update({ name }).eq('id', id));
@@ -163,12 +189,16 @@ function demoBackend() {
   let signedIn = params.get('demo') !== 'out';
   let n = 0;
   const id = () => `demo-${++n}`;
-  const lists = [{ id: id(), name: 'Year 3 Oak', code: 'K7M2QD', created_at: '2026-11-01' }];
+  const ME = 'teacher@example.sch.uk';
+  const empty = params.get('demo') === 'new';
+  const schools = empty ? [] : [{ id: id(), name: 'Oakfield Primary School', owner: ME, created_at: '2026-11-01' }];
+  const staff = empty ? {} : { [schools[0].id]: [ME, 'head@example.sch.uk', 'ms.hall@example.sch.uk'] };
+  const lists = empty ? [] : [{ id: id(), school_id: schools[0].id, name: 'Year 3 Oak', code: 'K7M2QD', created_at: '2026-11-01' }];
   const monday = nextMonday(addDays(today(), -14));
   const sets = [
-    { id: id(), list_id: lists[0].id, title: 'Week 1', release_date: monday, test_date: addDays(monday, 4), words: ['because', 'friend', 'people', 'beautiful', 'Wednesday', 'answer'], created_at: '1' },
-    { id: id(), list_id: lists[0].id, title: 'Week 2', release_date: addDays(monday, 7), test_date: addDays(monday, 11), words: ['different', 'through', 'enough', 'believe', 'island', 'necessary'], created_at: '2' },
-    { id: id(), list_id: lists[0].id, title: 'Week 3', release_date: addDays(monday, 14), test_date: null, words: ['accident', 'address', 'calendar', 'century'], created_at: '3' },
+    { id: id(), list_id: lists[0]?.id, title: 'Week 1', release_date: monday, test_date: addDays(monday, 4), words: ['because', 'friend', 'people', 'beautiful', 'Wednesday', 'answer'], created_at: '1' },
+    { id: id(), list_id: lists[0]?.id, title: 'Week 2', release_date: addDays(monday, 7), test_date: addDays(monday, 11), words: ['different', 'through', 'enough', 'believe', 'island', 'necessary'], created_at: '2' },
+    { id: id(), list_id: lists[0]?.id, title: 'Week 3', release_date: addDays(monday, 14), test_date: null, words: ['accident', 'address', 'calendar', 'century'], created_at: '3' },
   ];
   let changed = () => {};
   return {
@@ -196,11 +226,38 @@ function demoBackend() {
       signedIn = false;
       changed();
     },
-    async lists() {
-      return [...lists];
+    async schools() {
+      return schools.map((s) => ({ ...s, mine: s.owner === ME }));
     },
-    async createList(name) {
-      const list = { id: id(), name, code: 'P4T9XB', created_at: String(n) };
+    async createSchool(name) {
+      const school = { id: id(), name, owner: ME, created_at: today() };
+      schools.push(school);
+      staff[school.id] = [ME];
+      return school;
+    },
+    async renameSchool(schoolId, name) {
+      schools.find((s) => s.id === schoolId).name = name;
+    },
+    async staff(schoolId) {
+      return { members: [...(staff[schoolId] || [])], owner: schools.find((s) => s.id === schoolId).owner };
+    },
+    async invite(schoolId, email) {
+      const clean = email.trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) throw new Error('That does not look like an email address.');
+      if (staff[schoolId].includes(clean)) throw new Error('duplicate key value');
+      staff[schoolId].push(clean);
+    },
+    async removeMember(schoolId, email) {
+      staff[schoolId] = staff[schoolId].filter((e) => e !== email);
+    },
+    async handOver(schoolId, email) {
+      schools.find((s) => s.id === schoolId).owner = email;
+    },
+    async lists(schoolId) {
+      return lists.filter((l) => l.school_id === schoolId);
+    },
+    async createList(schoolId, name) {
+      const list = { id: id(), school_id: schoolId, name, code: 'P4T9XB', created_at: String(n) };
       lists.push(list);
       return list;
     },
@@ -232,6 +289,9 @@ const api = DEMO ? demoBackend() : realBackend();
 const app = document.getElementById('app');
 const state = {
   email: null,
+  schools: [],
+  schoolId: null,
+  staff: { members: [], owner: null },
   lists: [],
   listId: null,
   sets: [],
@@ -294,7 +354,15 @@ async function refresh() {
   state.email = await api.email();
   if (!state.email) return;
   state.sentTo = null;
-  state.lists = await api.lists();
+  state.schools = await api.schools();
+  if (!state.schools.some((s) => s.id === state.schoolId)) state.schoolId = state.schools[0]?.id ?? null;
+  if (!state.schoolId) {
+    state.lists = [];
+    state.listId = null;
+    state.sets = [];
+    return;
+  }
+  [state.lists, state.staff] = await Promise.all([api.lists(state.schoolId), api.staff(state.schoolId)]);
   if (state.listId && !state.lists.some((l) => l.id === state.listId)) state.listId = null;
   state.sets = state.listId ? await api.sets(state.listId) : [];
 }
@@ -303,6 +371,7 @@ function render() {
   const linkToken = params.get('token_hash');
   if (!state.email && linkToken && !state.usedLink) return renderConfirm(linkToken, params.get('type') || 'email');
   if (!state.email) return state.sentTo ? renderCode() : renderSignIn();
+  if (!state.schoolId) return renderSetup();
   if (state.listId) return renderList(state.lists.find((l) => l.id === state.listId));
   return renderLists();
 }
@@ -418,17 +487,145 @@ function accountLine() {
   );
 }
 
+/** Prints one thing: everything else on the page is hidden while printing. */
+function printNode(kind, ...content) {
+  for (const old of app.querySelectorAll('.print-only')) old.remove();
+  app.append(h('section', { class: `print-only print-${kind}` }, content));
+  window.print();
+}
+
+/** First sign-in, and not yet on any school's staff list. */
+function renderSetup() {
+  const name = h('input', { type: 'text', id: 'school-name', maxlength: '80', placeholder: 'For example: Oakfield Primary School', required: true });
+  const problem = problemSlot();
+  show(
+    preview(),
+    h('h1', {}, 'Set up your school'),
+    accountLine(),
+    h('p', { class: 'lead' }, 'One shared space for the whole school. Everyone you add sees the same lists and can change them.'),
+    h(
+      'form',
+      {
+        class: 'card',
+        onsubmit: (e) => {
+          e.preventDefault();
+          const value = name.value.trim();
+          if (!value) return;
+          submit(problem, async () => {
+            const school = await api.createSchool(value);
+            state.schoolId = school.id;
+            state.note = 'Your school is set up. Add your first list, then add your colleagues under Staff.';
+          });
+        },
+      },
+      h('label', { for: 'school-name' }, 'School name'),
+      name,
+      problem,
+      h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Set up school')),
+      h('p', { class: 'small muted' }, `Has a colleague already set your school up? Ask them to add ${state.email} under Staff, then sign in again. Free for your first term.`),
+    ),
+  );
+}
+
+function staffCard(school) {
+  const email = h('input', { type: 'email', id: 'invite', placeholder: 'colleague@yourschool.sch.uk', required: true });
+  const problem = problemSlot();
+  const { members, owner } = state.staff;
+  return h(
+    'div',
+    { class: 'card' },
+    h('h2', {}, `Staff (${members.length})`),
+    h('p', { class: 'small muted' }, 'Everyone here signs in with their own email address, sees the same lists and can change everything.'),
+    h(
+      'ul',
+      { class: 'staff' },
+      members.map((member) =>
+        h(
+          'li',
+          {},
+          h('span', { class: 'who' }, member, member === state.email ? h('span', { class: 'tag' }, 'you') : null, member === owner ? h('span', { class: 'tag later' }, 'owner') : null),
+          member === owner
+            ? null
+            : h(
+                'span',
+                { class: 'staff-actions' },
+                school.mine
+                  ? h('button', {
+                      class: 'link',
+                      onclick: () => {
+                        if (window.confirm(`Make ${member} the owner of ${school.name}? They must have signed in at least once. You stay on the staff list.`)) act(() => api.handOver(school.id, member), refresh);
+                      },
+                    }, 'Make owner')
+                  : null,
+                h('button', {
+                  class: 'link danger',
+                  onclick: () => {
+                    const self = member === state.email;
+                    if (window.confirm(self ? `Leave ${school.name}? You will no longer see its lists.` : `Remove ${member}? They will no longer be able to sign in to ${school.name}.`)) act(() => api.removeMember(school.id, member), refresh);
+                  },
+                }, member === state.email ? 'Leave' : 'Remove'),
+              ),
+        ),
+      ),
+    ),
+    h(
+      'form',
+      {
+        onsubmit: (e) => {
+          e.preventDefault();
+          const address = email.value.trim().toLowerCase();
+          submit(problem, async () => {
+            if (members.includes(address)) return 'That address is already on the list.';
+            await api.invite(school.id, address);
+            state.note = `${address} can now sign in at trickywords.uk/teach with that address. We do not email them, so please let them know.`;
+          });
+        },
+      },
+      h('label', { for: 'invite' }, 'Add a colleague'),
+      email,
+      problem,
+      h('div', { class: 'row' }, h('button', { class: 'btn quiet', type: 'submit' }, 'Add to staff')),
+    ),
+  );
+}
+
 function renderLists() {
+  const school = state.schools.find((s) => s.id === state.schoolId);
   const name = h('input', { type: 'text', id: 'list-name', maxlength: '60', placeholder: 'For example: Year 3 Oak', required: true });
   const problem = problemSlot();
   show(
     preview(),
-    h('h1', {}, 'Your spelling lists'),
-    accountLine(),
+    state.schools.length > 1
+      ? h(
+          'p',
+          { class: 'small' },
+          h(
+            'select',
+            { 'aria-label': 'School', onchange: (e) => act(async () => { state.schoolId = e.target.value; state.listId = null; }, refresh) },
+            state.schools.map((s) => h('option', { value: s.id, selected: s.id === school.id }, s.name)),
+          ),
+        )
+      : null,
+    h('h1', {}, school.name),
+    h(
+      'p',
+      { class: 'small muted' },
+      `Signed in as ${state.email}. `,
+      h('button', { class: 'link', onclick: () => act(() => api.signOut(), refresh) }, 'Sign out'),
+      ' · ',
+      h('button', {
+        class: 'link',
+        onclick: () => {
+          const next = window.prompt('Name of the school', school.name);
+          if (next && next.trim() && next.trim() !== school.name) act(() => api.renameSchool(school.id, next.trim().slice(0, 80)), refresh);
+        },
+      }, 'Rename school'),
+    ),
     noteBox(),
     problemBox(),
+    h('h2', {}, 'Spelling lists'),
     state.lists.length === 0
-      ? h('p', { class: 'lead' }, 'Start with one list per class or spelling group.')
+      ? h('p', { class: 'muted' }, 'Start with one list per class. Parents subscribe to a list with its code.')
       : h(
           'ul',
           { class: 'lists' },
@@ -454,7 +651,7 @@ function renderLists() {
           const value = name.value.trim();
           if (!value) return;
           submit(problem, async () => {
-            const list = await api.createList(value);
+            const list = await api.createList(school.id, value);
             state.listId = list.id;
           });
         },
@@ -465,6 +662,7 @@ function renderLists() {
       problem,
       h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Create list')),
     ),
+    staffCard(school),
     h(
       'p',
       { class: 'small muted' },
@@ -474,7 +672,11 @@ function renderLists() {
         {
           class: 'link danger',
           onclick: () => {
-            if (window.confirm('Delete your account and all your lists? Parents will stop receiving new words. This cannot be undone.')) {
+            const alone = state.staff.members.length <= 1;
+            const warning = school.mine && alone
+              ? `Delete your account and ${school.name} with all its lists? Parents will stop receiving new words. This cannot be undone.`
+              : 'Delete your account? The school and its lists stay for your colleagues.';
+            if (window.confirm(warning)) {
               act(async () => {
                 await api.deleteAccount();
                 state.note = null;
@@ -482,7 +684,7 @@ function renderLists() {
             }
           },
         },
-        'Delete my account and all lists',
+        'Delete my account',
       ),
     ),
   );
@@ -506,7 +708,7 @@ function renderList(list) {
   const link = PARENT_URL + list.code;
 
   show(
-    h('p', { class: 'crumb' }, h('button', { class: 'link', onclick: () => act(async () => { state.listId = null; }, refresh) }, '← All lists')),
+    h('p', { class: 'crumb' }, h('button', { class: 'link', onclick: () => act(async () => { state.listId = null; }, refresh) }, `← ${state.schools.find((sc) => sc.id === state.schoolId)?.name ?? 'All lists'}`)),
     h('span', { class: 'preview' }, 'Preview: please wait before handing the code out. Parents need app version 2.1.'),
     h('h1', {}, list.name),
     noteBox(),
@@ -523,7 +725,7 @@ function renderList(list) {
         h(
           'div',
           { class: 'row' },
-          h('button', { class: 'btn quiet', onclick: () => window.print() }, 'Print a note for parents'),
+          h('button', { class: 'btn quiet', onclick: () => printNode('note', parentNote(list)) }, 'Print a note for parents'),
           h('button', {
             class: 'link',
             onclick: () => {
@@ -553,26 +755,57 @@ function renderList(list) {
     waiting.length ? h('ul', { class: 'sets' }, waiting.map((s) => setCard(s, false))) : h('p', { class: 'muted' }, 'Nothing waiting to go out.'),
     h('h2', {}, sent.length ? `With parents (${sent.length})` : 'With parents'),
     sent.length ? h('ul', { class: 'sets' }, [...sent].reverse().map((s) => setCard(s, true))) : h('p', { class: 'muted' }, 'Nothing has gone out yet.'),
+  );
+}
 
-    // Only this part prints.
+/** The note that goes home once: the code, the QR code and three steps. */
+function parentNote(list) {
+  return [
+    h('h1', {}, `${list.name}: spellings on your phone`),
+    h('p', {}, 'Each week’s spelling words arrive in the Tricky Words app automatically.'),
+    qrFor(PARENT_URL + list.code),
+    h('p', { class: 'bigcode' }, showCode(list.code)),
     h(
-      'section',
-      { class: 'print-only' },
-      h('h1', {}, `${list.name}: spellings on your phone`),
-      h('p', {}, 'Each week’s spelling words arrive in the Tricky Words app automatically.'),
-      qrFor(link),
-      h('p', { class: 'bigcode' }, showCode(list.code)),
-      h(
-        'ol',
-        {},
-        h('li', {}, 'Install Tricky Words from the App Store.'),
-        h('li', {}, 'Scan the QR code with your phone’s camera, or open Words in the app, choose “Add a school list” and type the code.'),
-        h('li', {}, 'Practise a few minutes a day. New words appear on the day they are set.'),
-      ),
-      h('p', {}, 'trickywords.uk'),
+      'ol',
+      {},
+      h('li', {}, 'Install Tricky Words from the App Store.'),
+      h('li', {}, 'Scan the QR code with your phone’s camera, or open Words in the app, choose “Add a school list” and type the code.'),
+      h('li', {}, 'Practise a few minutes a day. New words appear on the day they are set.'),
+    ),
+    h('p', {}, 'trickywords.uk'),
+  ];
+}
+
+const setCaption = (set) => [set.title, set.test_date ? `Test ${niceDate(set.test_date)}` : null].filter(Boolean).join(' · ');
+
+/** One week's words as a practice sheet: the word, then room to write it three times. */
+function weekSheet(list, set) {
+  return [
+    h('h1', {}, list.name),
+    h('p', { class: 'sheet-sub' }, setCaption(set) || 'Spelling words'),
+    h(
+      'table',
+      { class: 'sheet' },
+      h('thead', {}, h('tr', {}, h('th', {}, 'Look'), h('th', {}, 'Cover and write'), h('th', {}, 'Check and write'), h('th', {}, 'Once more'))),
+      h('tbody', {}, set.words.map((w) => h('tr', {}, h('td', { class: 'w' }, w), h('td', {}), h('td', {}), h('td', {})))),
+    ),
+    h('p', { class: 'sheet-foot' }, 'Practise on your phone too: trickywords.uk'),
+  ];
+}
+
+/** The same words repeated as small slips, to cut out and stick in writing books. */
+function weekSlips(list, set) {
+  const perPage = set.words.length > 12 ? 4 : 8;
+  return h(
+    'div',
+    { class: `slips slips-${perPage}` },
+    Array.from({ length: perPage }, () =>
+      h('div', { class: 'slip' }, h('strong', {}, list.name), h('span', { class: 'slip-sub' }, setCaption(set) || 'Spelling words'), h('ul', {}, set.words.map((w) => h('li', {}, w)))),
     ),
   );
 }
+
+const currentList = () => state.lists.find((l) => l.id === state.listId);
 
 function setCard(set, isSent) {
   if (state.editing === set.id) return h('li', { class: 'set' }, editForm(set));
@@ -592,6 +825,8 @@ function setCard(set, isSent) {
       'div',
       { class: 'set-actions' },
       h('button', { class: 'link', onclick: () => { state.editing = set.id; state.problem = null; render(); } }, 'Edit'),
+      h('button', { class: 'link', onclick: () => printNode('sheet', weekSheet(currentList(), set)) }, 'Print sheet'),
+      h('button', { class: 'link', onclick: () => printNode('slips', weekSlips(currentList(), set)) }, 'Print slips for books'),
       h('button', {
         class: 'link danger',
         onclick: () => {

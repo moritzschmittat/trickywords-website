@@ -67,12 +67,41 @@
   .teach .bigcode { font-size: 38px; }
 }
 
+.teach .staff { list-style: none; padding: 0; margin: 14px 0 6px; display: grid; gap: 0; }
+.teach .staff li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; margin: 0; padding: 9px 0; border-bottom: 2px solid var(--rule); font-size: 17px; }
+.teach .staff .who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; word-break: break-all; }
+.teach .staff-actions { display: flex; gap: 16px; }
+.teach .set-actions { flex-wrap: wrap; }
+
+@page { margin: 12mm; }
 @media print {
   .no-print, .teach > *:not(.print-only) { display: none !important; }
   body { background: #fff; }
-  .print-only { display: block; text-align: center; padding-top: 40px; }
-  .print-only h1 { font-size: 40px; }
-  .print-only .bigcode { font-size: 64px; margin: 18px 0; }
-  .print-only .qr { width: 220px; height: 220px; margin: 18px auto; }
-  .print-only ol { text-align: left; max-width: 460px; margin: 24px auto; font-size: 20px; }
+  .teach { max-width: none; padding: 0; margin: 0; }
+  .print-only { display: block; color: #000; }
+
+  .print-note { text-align: center; padding-top: 30px; }
+  .print-note h1 { font-size: 40px; }
+  .print-note .bigcode { font-size: 64px; margin: 18px 0; }
+  .print-note .qr { width: 220px; height: 220px; margin: 18px auto; }
+  .print-note ol { text-align: left; max-width: 460px; margin: 24px auto; font-size: 20px; }
+
+  .print-sheet h1 { font-size: 30px; margin: 0; }
+  .print-sheet .sheet-sub { font-size: 18px; margin: 4px 0 14px; }
+  .print-sheet table { width: 100%; border-collapse: collapse; }
+  .print-sheet th { text-align: left; font-size: 14px; font-weight: 600; padding: 4px 8px; border-bottom: 2px solid #000; }
+  .print-sheet td { border-bottom: 1px solid #999; border-right: 1px solid #ccc; height: 11mm; padding: 0 8px; width: 25%; }
+  .print-sheet td:last-child { border-right: 0; }
+  .print-sheet td.w { font-family: "Patrick Hand", "Comic Sans MS", cursive; font-size: 24px; }
+  .print-sheet tr { break-inside: avoid; }
+  .print-sheet .sheet-foot { font-size: 13px; margin-top: 10px; color: #444; }
+
+  .slips { display: grid; grid-template-columns: 1fr 1fr; }
+  .slip { border: 1px dashed #777; padding: 5mm 6mm; break-inside: avoid; overflow: hidden; display: flex; flex-direction: column; }
+  .slips-8 .slip { height: 66mm; }
+  .slips-4 .slip { height: 133mm; }
+  .slip strong { font-size: 15px; }
+  .slip .slip-sub { font-size: 12px; color: #444; margin-bottom: 2mm; }
+  .slip ul { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 6mm; font-family: "Patrick Hand", "Comic Sans MS", cursive; font-size: 19px; line-height: 1.22; }
+  .slip li { margin: 0; break-inside: avoid; }
 }
