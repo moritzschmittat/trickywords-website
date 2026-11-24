@@ -142,8 +142,19 @@ function realBackend() {
       const owner = ok(await sb.rpc('school_owner_email', { p_school: schoolId }));
       return { members: members.map((m) => m.email), owner };
     },
+    /** Adds the address and emails an invitation. Says whether the email went out. */
     async invite(schoolId, email) {
+      const { data, error } = await sb.functions.invoke('invite-colleague', { body: { school_id: schoolId, email } });
+      if (!error) return data;
+      let message = null;
+      try {
+        message = (await error.context.json()).error;
+      } catch {
+        // The invitation service could not be reached: add the address anyway.
+      }
+      if (message) throw new Error(message);
       ok(await sb.from('school_members').insert({ school_id: schoolId, email }));
+      return { added: true, emailed: false, reason: 'not_sent' };
     },
     async removeMember(schoolId, email) {
       ok(await sb.from('school_members').delete().eq('school_id', schoolId).eq('email', email));
@@ -246,6 +257,7 @@ function demoBackend() {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) throw new Error('That does not look like an email address.');
       if (staff[schoolId].includes(clean)) throw new Error('duplicate key value');
       staff[schoolId].push(clean);
+      return { added: true, emailed: !clean.startsWith('old.'), reason: clean.startsWith('old.') ? 'has_account' : undefined };
     },
     async removeMember(schoolId, email) {
       staff[schoolId] = staff[schoolId].filter((e) => e !== email);
@@ -576,8 +588,12 @@ function staffCard(school) {
           const address = email.value.trim().toLowerCase();
           submit(problem, async () => {
             if (members.includes(address)) return 'That address is already on the list.';
-            await api.invite(school.id, address);
-            state.note = `${address} can now sign in at trickywords.uk/teach with that address. We do not email them, so please let them know.`;
+            const result = await api.invite(school.id, address);
+            state.note = result?.emailed
+              ? `Added. We have emailed ${address} an invitation.`
+              : result?.reason === 'has_account'
+                ? `Added. ${address} already has a Tricky Words sign-in, so no invitation was sent. They will see ${school.name} the next time they sign in.`
+                : `Added, but the invitation email could not be sent. Please tell ${address} to sign in at trickywords.uk/teach with that address.`;
           });
         },
       },
