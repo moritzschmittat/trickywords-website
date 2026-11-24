@@ -7,7 +7,9 @@ const SUPABASE_KEY = 'sb_publishable_eMk34Jl0GUfpTH88B_dPYA_5yBHK1rE';
 const PROTOCOL_VERSION = 1;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
-const RESULT_HOLD_MS = 2200;
+// How long a correct word stays full size. After that it moves to a
+// "Last word" line at the top, so a slow checker can still see it.
+const RESULT_HOLD_MS = 3500;
 const HOST_SILENCE_MS = 15000;
 
 const $ = (id) => document.getElementById(id);
@@ -87,8 +89,9 @@ function sheetWith(word, ruled) {
   return sheet;
 }
 
-function draw(state, link) {
+function draw(state, link, last) {
   view.replaceChildren();
+  view.classList.toggle('with-last', false);
   const showingWord = state.phase === 'result' || state.phase === 'copy' || state.phase === 'reveal';
   if ((!link.connected || !link.hostPresent) && !showingWord) {
     view.append(el('p', 'headline', link.connected ? 'Waiting for the phone' : 'Connecting…'));
@@ -98,6 +101,12 @@ function draw(state, link) {
   if (state.phase === 'waiting') {
     view.append(el('p', 'headline', 'Connected'), el('p', 'hint', 'Practice will start in a moment.'));
   } else if (state.phase === 'writing') {
+    if (last) {
+      const chip = el('div', 'last');
+      chip.append(el('span', 'last-label', 'Last word'), el('span', last.outcome === 'mastered' ? 'last-tick gold' : 'last-tick', last.outcome === 'mastered' ? '★' : '✓'), el('span', 'last-word', last.word));
+      view.append(chip);
+      view.classList.add('with-last');
+    }
     view.append(el('div', 'pencil', '✏️'), el('p', 'headline', 'Listen and write'));
   } else if (state.phase === 'reveal') {
     view.append(el('p', 'hint', 'Check your spelling'), sheetWith(state.word, false));
@@ -128,6 +137,8 @@ function tuneIn(code) {
   let pending = null;
   let timer = null;
   let lastSeq = -1;
+  /** The last correct word, kept in view while the next one is written. */
+  let last = null;
   let lastHeard = Date.now();
   const link = { connected: false, hostPresent: false };
 
@@ -136,7 +147,9 @@ function tuneIn(code) {
     shownAt = Date.now();
     if (state.phase === 'result') play(state.outcome === 'mastered' ? 'mastered' : 'correct');
     else if (state.phase === 'copy' && state.missed) play('incorrect');
-    draw(shown, link);
+    if (state.phase === 'result') last = { word: state.word, outcome: state.outcome };
+    else if (state.phase !== 'writing') last = null;
+    draw(shown, link, last);
   };
   // A correct word stays up for a moment even if the phone has already moved on.
   const receive = (state) => {
@@ -152,7 +165,7 @@ function tuneIn(code) {
   };
   const refresh = () => {
     link.hostPresent = hosts() > 0 && Date.now() - lastHeard < HOST_SILENCE_MS;
-    if (!pending) draw(shown, link);
+    if (!pending) draw(shown, link, last);
   };
 
   channel
@@ -175,7 +188,7 @@ function tuneIn(code) {
     });
 
   const watchdog = setInterval(refresh, 3000);
-  draw(shown, link);
+  draw(shown, link, last);
   return () => {
     clearInterval(watchdog);
     clearTimeout(timer);
@@ -236,7 +249,7 @@ if (demo) {
   join.hidden = true;
   stage.hidden = false;
   $('stage-code').textContent = 'Demo';
-  draw({ phase, word, outcome: phase === 'mastered' ? 'mastered' : 'correct', missed: true, ...(phase === 'mastered' ? { phase: 'result' } : {}) }, { connected: phase !== 'connecting', hostPresent: phase !== 'nophone' && phase !== 'connecting' });
+  draw({ phase, word, outcome: phase === 'mastered' ? 'mastered' : 'correct', missed: true, ...(phase === 'mastered' ? { phase: 'result' } : {}) }, { connected: phase !== 'connecting', hostPresent: phase !== 'nophone' && phase !== 'connecting' }, phase === 'writing' && demo.includes(':') ? { word, outcome: 'correct' } : null);
 } else if (fromLink) {
   // Opened from a link with the code in it: join straight away. Sound needs one tap, so the button says so.
   soundOn = false;

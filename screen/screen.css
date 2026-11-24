@@ -40,3 +40,15 @@
 @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) { .pencil, .tick { animation: none; } }
+
+/* The last correct word stays in view while the next one is written. */
+.last { display: flex; align-items: center; gap: 0.35em; background: var(--paper); color: var(--ink); border: clamp(3px, 0.4vw, 6px) solid var(--navy); border-radius: 999px; padding: 0.12em 0.7em 0.12em 0.5em; font-size: clamp(26px, 5.5vw, 96px); font-weight: 700; line-height: 1.15; max-width: 92vw; animation: settle 0.45s ease-out both; }
+.last-label { font-size: 0.36em; font-weight: 600; color: var(--muted); text-transform: none; white-space: nowrap; }
+.last-tick { width: 1em; height: 1em; flex: none; border-radius: 50%; background: var(--tick); color: #fff; display: grid; place-items: center; font-size: 0.7em; }
+.last-tick.gold { background: var(--pencil); color: var(--navy); }
+.last-word { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.view.with-last { justify-content: flex-start; padding-top: 3vh; }
+.view.with-last .pencil { margin-top: auto; font-size: clamp(54px, 12vh, 150px); }
+.view.with-last .headline { margin-bottom: auto; }
+@keyframes settle { from { transform: translateY(18vh) scale(1.5); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .last { animation: none; } }
