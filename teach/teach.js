@@ -737,7 +737,7 @@ function renderList(list) {
         {},
         h('h2', {}, 'Code for parents'),
         h('p', { class: 'bigcode' }, showCode(list.code)),
-        h('p', { class: 'small muted' }, 'Hand this out once. Parents type it into the Tricky Words app, or scan the QR code, and get every set on its date.'),
+        h('p', { class: 'small muted' }, 'Hand this out once. Parents type it into the Tricky Words app, or scan the QR code, and receive every set on its date. It is one way: you cannot see who uses the list, and nothing is sent back.'),
         h(
           'div',
           { class: 'row' },
@@ -788,6 +788,7 @@ function parentNote(list) {
       h('li', {}, 'Scan the QR code with your phone’s camera, or open Words in the app, choose “Add a school list” and type the code.'),
       h('li', {}, 'Practise a few minutes a day. New words appear on the day they are set.'),
     ),
+    h('p', { class: 'one-way' }, 'One way only: the school sends the words to your phone. It cannot see who uses the app or how your child is doing.'),
     h('p', {}, 'trickywords.uk'),
   ];
 }

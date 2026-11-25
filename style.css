@@ -219,3 +219,9 @@ p { margin: 0; }
   .school-art { margin-top: 26px; }
   .feature.wide { text-align: left; }
 }
+
+.feature .small-note { font-size: 16px; color: var(--muted); margin-top: 12px; }
+.hero h1 { text-wrap: balance; }
+
+.hero h1.two-line { font-size: clamp(38px, 5vw, 64px); }
+.hero h1.two-line span { display: block; font-size: 0.72em; margin-top: 0.12em; }
