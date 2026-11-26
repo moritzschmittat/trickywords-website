@@ -31,8 +31,9 @@ function isScreenMessage(m) {
   const s = m.state;
   if (!s || typeof s !== 'object') return false;
   if (s.phase === 'waiting' || s.phase === 'done' || s.phase === 'writing') return true;
-  if (s.phase === 'result' || s.phase === 'copy' || s.phase === 'reveal') {
-    return typeof s.word === 'string' && s.word.length > 0 && s.word.length <= 40;
+  if (s.phase === 'result' || s.phase === 'copy' || s.phase === 'reveal' || s.phase === 'class') {
+    if (typeof s.word !== 'string' || s.word.length === 0 || s.word.length > 40) return false;
+    return s.phase !== 'class' || s.share === 'few' || s.share === 'half';
   }
   return false;
 }
@@ -89,10 +90,18 @@ function sheetWith(word, ruled) {
   return sheet;
 }
 
+/** What is on the screen now, so the same picture is never drawn (and animated) twice. */
+let drawn = '';
+/** The word in the "Last word" line that has already had its entrance. */
+let settled = '';
+
 function draw(state, link, last) {
+  const picture = JSON.stringify([state, link.connected, link.hostPresent, last]);
+  if (picture === drawn) return;
+  drawn = picture;
   view.replaceChildren();
   view.classList.toggle('with-last', false);
-  const showingWord = state.phase === 'result' || state.phase === 'copy' || state.phase === 'reveal';
+  const showingWord = state.phase === 'result' || state.phase === 'copy' || state.phase === 'reveal' || state.phase === 'class';
   if ((!link.connected || !link.hostPresent) && !showingWord) {
     view.append(el('p', 'headline', link.connected ? 'Waiting for the phone' : 'Connecting…'));
     view.append(el('p', 'hint', link.connected ? 'In the app, tap "Second screen" to start sharing.' : 'Check the internet connection.'));
@@ -102,14 +111,20 @@ function draw(state, link, last) {
     view.append(el('p', 'headline', 'Connected'), el('p', 'hint', 'Practice will start in a moment.'));
   } else if (state.phase === 'writing') {
     if (last) {
-      const chip = el('div', 'last');
-      chip.append(el('span', 'last-label', 'Last word'), el('span', last.outcome === 'mastered' ? 'last-tick gold' : 'last-tick', last.outcome === 'mastered' ? '★' : '✓'), el('span', 'last-word', last.word));
+      // The move to the top is animated once per word, not on every redraw.
+      const key = last.word + '|' + state.turn;
+      const chip = el('div', key === settled ? 'last' : 'last fresh');
+      settled = key;
+      const mark = last.outcome === 'mastered' ? ['last-tick gold', '★'] : last.outcome === 'again' ? ['last-tick again', '↻'] : ['last-tick', '✓'];
+      chip.append(el('span', 'last-label', 'Last word'), el('span', mark[0], mark[1]), el('span', 'last-word', last.word));
       view.append(chip);
       view.classList.add('with-last');
     }
     view.append(el('div', 'pencil', '✏️'), el('p', 'headline', 'Listen and write'));
   } else if (state.phase === 'reveal') {
     view.append(el('p', 'hint', 'Check your spelling'), sheetWith(state.word, false));
+  } else if (state.phase === 'class') {
+    view.append(el('p', 'hint', state.share === 'half' ? 'Nearly there. We will try it once more.' : 'A tricky one. We will practise it again.'), sheetWith(state.word, false));
   } else if (state.phase === 'result') {
     view.append(el('div', state.outcome === 'mastered' ? 'tick gold' : 'tick', state.outcome === 'mastered' ? '★' : '✓'), sheetWith(state.word, false));
     if (state.outcome === 'mastered') view.append(el('div', 'badge', 'Mastered!'));
@@ -148,12 +163,13 @@ function tuneIn(code) {
     if (state.phase === 'result') play(state.outcome === 'mastered' ? 'mastered' : 'correct');
     else if (state.phase === 'copy' && state.missed) play('incorrect');
     if (state.phase === 'result') last = { word: state.word, outcome: state.outcome };
+    else if (state.phase === 'class') last = { word: state.word, outcome: 'again' };
     else if (state.phase !== 'writing') last = null;
     draw(shown, link, last);
   };
   // A correct word stays up for a moment even if the phone has already moved on.
   const receive = (state) => {
-    const wait = shown.phase === 'result' ? Math.max(0, RESULT_HOLD_MS - (Date.now() - shownAt)) : 0;
+    const wait = shown.phase === 'result' || shown.phase === 'class' ? Math.max(0, RESULT_HOLD_MS - (Date.now() - shownAt)) : 0;
     clearTimeout(timer);
     if (wait === 0) show(state);
     else { pending = state; timer = setTimeout(() => { const next = pending; pending = null; show(next); }, wait); }
@@ -198,6 +214,7 @@ function tuneIn(code) {
 
 // ---- Page wiring ----
 function start(code) {
+  drawn = '';
   join.hidden = true;
   stage.hidden = false;
   $('stage-code').textContent = 'Code ' + code.slice(0, 3) + ' ' + code.slice(3);
@@ -249,7 +266,7 @@ if (demo) {
   join.hidden = true;
   stage.hidden = false;
   $('stage-code').textContent = 'Demo';
-  draw({ phase, word, outcome: phase === 'mastered' ? 'mastered' : 'correct', missed: true, ...(phase === 'mastered' ? { phase: 'result' } : {}) }, { connected: phase !== 'connecting', hostPresent: phase !== 'nophone' && phase !== 'connecting' }, phase === 'writing' && demo.includes(':') ? { word, outcome: 'correct' } : null);
+  draw({ phase, word, share: demo.split(':')[2] === 'half' ? 'half' : 'few', outcome: phase === 'mastered' ? 'mastered' : 'correct', missed: true, ...(phase === 'mastered' ? { phase: 'result' } : {}) }, { connected: phase !== 'connecting', hostPresent: phase !== 'nophone' && phase !== 'connecting' }, phase === 'writing' && demo.includes(':') ? { word, outcome: 'correct' } : null);
 } else if (fromLink) {
   // Opened from a link with the code in it: join straight away. Sound needs one tap, so the button says so.
   soundOn = false;

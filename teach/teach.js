@@ -767,6 +767,18 @@ function renderList(list) {
 
     addForm(list, suggested),
 
+    state.sets.length
+      ? h('div', { class: 'row' }, h('button', {
+          class: 'btn quiet',
+          type: 'button',
+          onclick: () => {
+            const form = document.getElementById('add-words');
+            if (!form) return;
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            form.querySelector('textarea')?.focus({ preventScroll: true });
+          },
+        }, '+ Add another week'))
+      : null,
     h('h2', {}, waiting.length ? `Scheduled (${waiting.length})` : 'Scheduled'),
     waiting.length ? h('ul', { class: 'sets' }, waiting.map((s) => setCard(s, false))) : h('p', { class: 'muted' }, 'Nothing waiting to go out.'),
     h('h2', {}, sent.length ? `With parents (${sent.length})` : 'With parents'),
@@ -939,6 +951,7 @@ function addForm(list, suggested) {
     'form',
     {
       class: 'card',
+      id: 'add-words',
       onsubmit: (e) => {
         e.preventDefault();
         const sets = planned();
@@ -951,7 +964,10 @@ function addForm(list, suggested) {
         });
       },
     },
-    h('h2', {}, 'Add words'),
+    h('h2', {}, state.sets.length === 0 ? 'Add the first week’s words' : `Add the next week’s words (Week ${nextNumber})`),
+    h('p', { class: 'small muted' }, state.sets.length === 0
+      ? 'Each week is its own set of words with its own date. Save this one and the form is ready for the week after.'
+      : `You have ${state.sets.length} ${state.sets.length === 1 ? 'week' : 'weeks'} so far, listed below. Fill this in again for each new week.`),
     h(
       'div',
       { class: 'tabs', role: 'tablist' },
@@ -966,11 +982,12 @@ function addForm(list, suggested) {
       : [
           h('label', {}, 'Title', title),
           h('div', { class: 'two' }, h('label', {}, 'Goes out on', release), h('label', {}, 'Spelling test ', h('span', { class: 'hint' }, '(optional)'), test)),
+          h('p', { class: 'small muted' }, 'Parents receive the words on the "goes out" day. Choose today to send them straight away.'),
         ],
     h('label', {}, 'Words ', h('span', { class: 'hint' }, 'one per line, or separated by commas'), words),
     term ? plan : null,
     problem,
-    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, term ? 'Save the term' : 'Save')),
+    h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, term ? 'Save the term' : `Save Week ${nextNumber}`)),
   );
 }
 
